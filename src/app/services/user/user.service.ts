@@ -1,34 +1,39 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams  } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { User } from '../../types/user.type';
+import { PaginatedUsersResponse, User } from '../../types/user.type';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UserService {
 
-  private baseUrl = 'http://localhost:8080/';
+  private apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) { }
 
-  getAllUsers(): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/api/users`);
+  getAllUsers(page: number, size: number, sort: string): Observable<PaginatedUsersResponse> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', sort);
+    return this.http.get<PaginatedUsersResponse>(`${this.apiUrl}/api/users`, { params });
   }
 
-  getUserById(id: string): Observable<User> {
-    return this.http.get<User>(`${this.baseUrl}/api/users/${id}`);
+  getUserById(id: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/api/users/${id}`);
   }
 
-  createUser(user: User): Observable<User> {
-    return this.http.post<User>(`${this.baseUrl}/api/users`, user);
+  createUser(user: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/api/users`, user);
   }
 
-  updateUser(user: User): Observable<User> {
-    return this.http.put<User>(`${this.baseUrl}/api/users/${user.id}`, user);
+  updateUser(user: any): Observable<any> {
+    return this.http.put<User>(`${this.apiUrl}/api/users/${user.id}`, user);
   }
 
   deleteUser(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/api/users/${id}`);
+    return this.http.delete<void>(`${this.apiUrl}/api/users/${id}`);
   }
 }

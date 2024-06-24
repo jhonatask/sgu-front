@@ -1,5 +1,5 @@
 <div class="login-container h-full">
-    <form [formGroup]="loginForm">
+    <form [formGroup]="loginForm" (ngSubmit)="submitLogin()">
         <p-card header="Login SGU" [style]="{width: '360px'}">
             <div class="field">
                 <label for="email">Email</label>
@@ -12,12 +12,14 @@
             <div class="field">
                 <label for="password">Senha</label>
                 <input type="password" pInputText formControlName="password" class="w-full"  name="password"/>
-                <small *ngIf="password.invalid && (password.dirty || password.touched)" class="block p-error">
+                <small *ngIf="password.invalid  && (password.dirty || password.touched)" class="block p-error">
                     <div *ngIf="password.errors?.['required']">Informe uma senha</div>
+                    <div *ngIf="password.errors?.['minlength']">Senha deve conter no minimo 6 caracteres</div>
+                    
                 </small>
             </div>
-            <p-button label="Entrar" styleClass="w-full" />
+            <p-button label="Entrar" styleClass="w-full" [disabled]="loginForm.invalid" type="submit"/>
         </p-card>
     </form>
 </div>
-
+<p-toast />
