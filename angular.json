@@ -42,10 +42,10 @@
           "configurations": {
             "production": {
               "fileReplacements": [
-              {
-                "replace": "src/environments/environment.ts",
-                "with": "src/environments/environment.prod.ts"
-              }
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
               ],
               "budgets": [
                 {
@@ -105,11 +105,23 @@
             ],
             "scripts": []
           }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "src/**/*.ts",
+              "src/**/*.html"
+            ]
+          }
         }
       }
     }
   },
   "cli": {
-    "analytics": "e599641d-41fb-4392-8bc3-8fc5a5be85d7"
+    "analytics": "e599641d-41fb-4392-8bc3-8fc5a5be85d7",
+    "schematicCollections": [
+      "@angular-eslint/schematics"
+    ]
   }
 }

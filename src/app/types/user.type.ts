@@ -1,40 +1,43 @@
 import { Department } from "./departament.type";
+import { PaginatedResponse } from "./api-response.type";
 
-export interface User  {
-    id?: string;
-    name: string;
-    email: string;
-    password: string;
-    telefone: string;
-    cpforcnpj: string;
-    department: Department;
+export interface User {
+  id?: string;
+  name: string;
+  email: string;
+  password?: string;
+  telefone: string;
+  cpforcnpj: string;
+  department: Department;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export interface PaginatedUsersResponse {
-    totalElements: number;
-    totalPages: number;
-    size: number;
-    content: User[];
-    number: number;
-    sort: {
-      empty: boolean;
-      unsorted: boolean;
-      sorted: boolean;
-    };
-    first: boolean;
-    last: boolean;
-    numberOfElements: number;
-    pageable: {
-      pageNumber: number;
-      pageSize: number;
-      sort: {
-        empty: boolean;
-        unsorted: boolean;
-        sorted: boolean;
-      };
-      offset: number;
-      paged: boolean;
-      unpaged: boolean;
-    };
-    empty: boolean;
-  }
+export interface CreateUserRequest {
+  name: string;
+  email: string;
+  password: string;
+  telefone: string;
+  cpforcnpj: string;
+  departmentId: string;
+}
+
+export interface UpdateUserRequest {
+  id: string;
+  name?: string;
+  email?: string;
+  telefone?: string;
+  cpforcnpj?: string;
+  departmentId?: string;
+}
+
+export interface UserFormData {
+  id?: string;
+  name: string;
+  email: string;
+  telefone: string;
+  cpforcnpj: string;
+  department: string;
+}
+
+export type PaginatedUsersResponse = PaginatedResponse<User>;

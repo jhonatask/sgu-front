@@ -1,114 +1,141 @@
-import { Component } from '@angular/core';
-import { UserService} from '../../services/user/user.service'
+import { Component, OnInit } from '@angular/core';
+import { UserService } from '../../services/user/user.service';
 import { PaginatedUsersResponse, User } from '../../types/user.type';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
-import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { DialogModule } from 'primeng/dialog';
 import { UserCadastroComponent } from '../user-cadastro/user-cadastro.component';
-import { MessageService, ConfirmationService  } from 'primeng/api';
+import { MessageService, ConfirmationService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { Router } from '@angular/router';
+import { LoadingService } from '../../services/loading/loading.service';
+import { ErrorService } from '../../services/error/error.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-user-list',
   standalone: true,
-  imports: [TableModule, ButtonModule, DialogModule, UserCadastroComponent, ToastModule, ConfirmDialogModule],
+  imports: [TableModule, ButtonModule, DialogModule, UserCadastroComponent, ToastModule, ConfirmDialogModule, CommonModule],
   providers: [
     UserService,
     MessageService,
-    ConfirmationService
+    ConfirmationService,
+    LoadingService,
+    ErrorService
   ],
-  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: './user-list.component.html',
   styleUrl: './user-list.component.scss'
 })
-export class UserListComponent {
+export class UserListComponent implements OnInit {
   users: User[] = [];
-  totalElements!: number;
-  totalPages!: number;
+  totalElements: number = 0;
+  totalPages: number = 0;
   currentPage: number = 0;
   pageSize: number = 5;
   sort: string = 'name,asc';
   loading: boolean = false;
   displayAddEditModal = false;
+  selectedUser: User | null = null;
+  isLoading$ = this.loadingService.isLoading$;
 
-  selectedUser: any = null;
+  constructor(
+    private userService: UserService,
+    private messageService: MessageService,
+    private confirmationService: ConfirmationService,
+    private router: Router,
+    private loadingService: LoadingService,
+    private errorService: ErrorService
+  ) {}
 
-  constructor(private userService: UserService, private messageService: MessageService, private confirmationService: ConfirmationService, private router: Router,){}
-
-  ngOnInit() {
-    this.getAllUsers();
+  ngOnInit(): void {
+    this.loadUsers();
   }
 
- getAllUsers(event?: any): void {
+  loadUsers(event?: any): void {
     this.loading = true;
     this.currentPage = event ? event.first / event.rows : 0;
     this.pageSize = event ? event.rows : 5;
-    this.userService.getAllUsers(this.currentPage, this.pageSize, this.sort).subscribe(
-    (data: PaginatedUsersResponse) => {
+    
+    this.userService.getAllUsers(this.currentPage, this.pageSize, this.sort).subscribe({
+      next: (data: PaginatedUsersResponse) => {
         this.users = data.content;
         this.totalElements = data.totalElements;
         this.totalPages = data.totalPages;
         this.loading = false;
-    },
-    errorResponse => {
-      this.messageService.add({ severity: 'error', summary: 'Error', detail: errorResponse.error })
+      },
+      error: (error) => {
+        this.loading = false;
+        this.errorService.handleError(error);
       }
-   );
- }
+    });
+  }
 
- showAddModal(){
-  this.displayAddEditModal = true;
-  this.selectedUser = null;
- }
+  showAddModal(): void {
+    this.displayAddEditModal = true;
+    this.selectedUser = null;
+  }
 
- hideAddModal(isClosed: boolean){
-  this.displayAddEditModal = !isClosed;
- }
+  hideAddModal(isClosed: boolean): void {
+    this.displayAddEditModal = !isClosed;
+  }
 
- saveUserToList(newData: any){
-   this.users.unshift(newData);
- }
+  saveUserToList(newData: User): void {
+    this.users.unshift(newData);
+    this.totalElements++;
+  }
 
- showEditModel(user: User){
+  showEditModal(user: User): void {
     this.displayAddEditModal = true;
     this.selectedUser = user;
- }
+  }
 
- confirmDelete(user: string) {
-  this.confirmationService.confirm({
-    header: 'Delete Confirmation',
-    message: 'Você tem certeza que deseja excluir este usuário?',
-    icon: 'pi pi-info-circle',
-    acceptButtonStyleClass:"p-button-danger p-button-text",
-    rejectButtonStyleClass:"p-button-text p-button-text",
-    acceptIcon:"none",
-    rejectIcon:"none",
-    accept: () => {
-      this.onDeletUser(user);
+  confirmDelete(user: User): void {
+    if (!user.id) {
+      this.errorService.handleError('ID do usuário não encontrado');
+      return;
     }
-  });
-}
 
- onDeletUser(user: string){
-    this.userService.deleteUser(user).subscribe(
-      data => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Usuario Deletado' })
-        this.getAllUsers();
-      },
-      responseError =>{
-
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: responseError.error })
+    this.confirmationService.confirm({
+      header: 'Confirmar Exclusão',
+      message: `Tem certeza que deseja excluir o usuário ${user.name}?`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-secondary',
+      accept: () => {
+        this.deleteUser(user.id!);
       }
-    );
- }
+    });
+  }
 
- logout() {
-  sessionStorage.removeItem('auth-token');
-  this.router.navigate(['/login']);
-}
+  private deleteUser(userId: string): void {
+    this.userService.deleteUser(userId).subscribe({
+      next: () => {
+        this.errorService.handleSuccess('Usuário excluído com sucesso');
+        this.loadUsers();
+      },
+      error: (error) => {
+        this.errorService.handleError(error);
+      }
+    });
+  }
 
+  logout(): void {
+    this.router.navigate(['/login']);
+  }
 
+  onUserSaved(user: User): void {
+    if (this.selectedUser) {
+      // Update existing user
+      const index = this.users.findIndex(u => u.id === user.id);
+      if (index !== -1) {
+        this.users[index] = user;
+      }
+    } else {
+      // Add new user
+      this.saveUserToList(user);
+    }
+    this.displayAddEditModal = false;
+    this.selectedUser = null;
+  }
 }

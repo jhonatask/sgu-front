@@ -1,4 +1,4 @@
-import { Component , Input, OnInit, EventEmitter, Output, OnChanges, SimpleChanges} from '@angular/core';
+import { Component, Input, OnInit, EventEmitter, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -8,17 +8,20 @@ import { DropdownModule } from 'primeng/dropdown';
 import { UserService } from '../../services/user/user.service';
 import { DepartmentService } from '../../services/department/department.service';
 import { ToastModule } from 'primeng/toast';
-import { User } from '../../types/user.type';
-
+import { User, CreateUserRequest, UpdateUserRequest, UserFormData } from '../../types/user.type';
+import { Department } from '../../types/departament.type';
+import { LoadingService } from '../../services/loading/loading.service';
+import { ErrorService } from '../../services/error/error.service';
 
 interface UserForm {
-  id: FormControl,
-  name: FormControl,
-  email: FormControl,
-  telefone: FormControl,
-  cpforcnpj: FormControl,
-  department: FormControl
+  id: FormControl<string | null>;
+  name: FormControl<string | null>;
+  email: FormControl<string | null>;
+  telefone: FormControl<string | null>;
+  cpforcnpj: FormControl<string | null>;
+  department: FormControl<string | null>;
 }
+
 @Component({
   selector: 'app-user-cadastro',
   standalone: true,
@@ -26,124 +29,178 @@ interface UserForm {
   providers: [
     UserService,
     MessageService,
-    DepartmentService
+    DepartmentService,
+    LoadingService,
+    ErrorService
   ],
   templateUrl: './user-cadastro.component.html',
   styleUrl: './user-cadastro.component.scss'
 })
 export class UserCadastroComponent implements OnInit, OnChanges {
   @Input() displayAddEditModal: boolean = true;
-  @Input() selectedUser: any = null
+  @Input() selectedUser: User | null = null;
   @Output() clickClose: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() clickAdd: EventEmitter<any> = new EventEmitter<any>();
+  @Output() clickAdd: EventEmitter<User> = new EventEmitter<User>();
 
   userForm!: FormGroup<UserForm>;
-  departamentos: any[] = [];
+  departments: Department[] = [];
+  isLoading$ = this.loadingService.isLoading$;
 
   constructor(
     private userService: UserService,
     private messageService: MessageService,
-    private departmentService: DepartmentService
-  ){
-    this.userForm = new FormGroup({
-      id: new FormControl('', []),
-      email: new FormControl('', [Validators.required, Validators.email]),
-      name: new FormControl('', [Validators.required]),
-      telefone: new FormControl('', [Validators.required]),
-      cpforcnpj: new FormControl('', [Validators.required]),
-      department: new FormControl(null, [Validators.required]),
-    })
+    private departmentService: DepartmentService,
+    private loadingService: LoadingService,
+    private errorService: ErrorService
+  ) {
+    this.initializeForm();
   }
 
   ngOnInit(): void {
     this.loadDepartments();
   }
 
-  ngOnChanges(): void {
-    if(this.selectedUser){
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['selectedUser'] && this.selectedUser) {
       this.userForm.patchValue({
-        ...this.selectedUser,
-        department: this.selectedUser.department.id 
+        id: this.selectedUser.id || null,
+        name: this.selectedUser.name,
+        email: this.selectedUser.email,
+        telefone: this.selectedUser.telefone,
+        cpforcnpj: this.selectedUser.cpforcnpj,
+        department: this.selectedUser.department?.id || null
       });
-    }else{
-      this.userForm.reset();
+    } else if (changes['selectedUser'] && !this.selectedUser) {
+      this.resetForm();
     }
   }
 
-  get email(){
+  private initializeForm(): void {
+    this.userForm = new FormGroup({
+      id: new FormControl(null),
+      name: new FormControl('', [Validators.required, Validators.minLength(2)]),
+      email: new FormControl('', [Validators.required, Validators.email]),
+      telefone: new FormControl('', [Validators.required, Validators.pattern(/^\(\d{2}\)\s\d{4,5}-\d{4}$/)]),
+      cpforcnpj: new FormControl('', [Validators.required, Validators.minLength(11)]),
+      department: new FormControl(null, [Validators.required])
+    });
+  }
+
+  get email() {
     return this.userForm.controls['email'];
   }
 
-  get name(){
+  get name() {
     return this.userForm.controls['name'];
   }
 
-  get telefone(){
+  get telefone() {
     return this.userForm.controls['telefone'];
   }
-  get cpforcnpj(){
+
+  get cpforcnpj() {
     return this.userForm.controls['cpforcnpj'];
   }
-  get department(){
+
+  get department() {
     return this.userForm.controls['department'];
   }
 
-  
+  get isFormValid(): boolean {
+    return this.userForm.valid;
+  }
+
+  get isEditMode(): boolean {
+    return !!this.selectedUser?.id;
+  }
 
   loadDepartments(): void {
-    this.departmentService.getDepartaments().subscribe(
-      (response) => {
-        this.departamentos = response.map((dept: { name: any; id: any; }) => ({ label: dept.name, value: dept.id }));
-        if (this.selectedUser) {
+    this.departmentService.getDepartments().subscribe({
+      next: (response: Department[]) => {
+        this.departments = response;
+        if (this.selectedUser?.department?.id) {
           this.userForm.patchValue({
-            department: this.selectedUser.department.id 
+            department: this.selectedUser.department.id
           });
         }
       },
-      (errorResponse) => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorResponse.error })
+      error: (error) => {
+        this.errorService.handleError(error);
       }
-    );
+    });
   }
 
-  onCloseModal(){
-    this.userForm.reset();
+  onCloseModal(): void {
+    this.resetForm();
     this.clickClose.emit(true);
   }
 
-  
-
-  onSaveUserModal(){
-    this.userService.createUser(this.userForm.value).subscribe(
-      response => {
-        this.clickAdd.emit(response);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Cadastro realizado com sucesso' });
-        this.onCloseModal();
-      },
-      errorResponse => {
-        console.log(errorResponse)
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorResponse.error })
-      }
-      
-    );
+  private resetForm(): void {
+    this.userForm.reset();
+    this.selectedUser = null;
   }
 
-  onUpdateUser(){
-    this.userService.updateUser(this.userForm.value).subscribe(
-      response => {
-        this.clickAdd.emit(response);
-        this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Cadastro Atualizado com sucesso' });
-        this.onCloseModal();
-      },
-      errorResponse => {
-        console.log(errorResponse)
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorResponse.error })
-      }
-      
-    );
+  onSaveUser(): void {
+    if (!this.isFormValid) {
+      this.userForm.markAllAsTouched();
+      this.errorService.handleError('Por favor, preencha todos os campos obrigatórios');
+      return;
+    }
+
+    const formData = this.userForm.value as UserFormData;
+    
+    if (this.isEditMode) {
+      this.updateUser(formData);
+    } else {
+      this.createUser(formData);
+    }
   }
 
+  private createUser(formData: UserFormData): void {
+    const createRequest: CreateUserRequest = {
+      name: formData.name,
+      email: formData.email,
+      telefone: formData.telefone,
+      cpforcnpj: formData.cpforcnpj,
+      departmentId: formData.department
+    };
 
- 
+    this.userService.createUser(createRequest).subscribe({
+      next: (response: User) => {
+        this.errorService.handleSuccess('Usuário criado com sucesso');
+        this.clickAdd.emit(response);
+        this.onCloseModal();
+      },
+      error: (error) => {
+        this.errorService.handleError(error);
+      }
+    });
+  }
 
+  private updateUser(formData: UserFormData): void {
+    if (!formData.id) {
+      this.errorService.handleError('ID do usuário não encontrado');
+      return;
+    }
+
+    const updateRequest: UpdateUserRequest = {
+      id: formData.id,
+      name: formData.name,
+      email: formData.email,
+      telefone: formData.telefone,
+      cpforcnpj: formData.cpforcnpj,
+      departmentId: formData.department
+    };
+
+    this.userService.updateUser(updateRequest).subscribe({
+      next: (response: User) => {
+        this.errorService.handleSuccess('Usuário atualizado com sucesso');
+        this.clickAdd.emit(response);
+        this.onCloseModal();
+      },
+      error: (error) => {
+        this.errorService.handleError(error);
+      }
+    });
+  }
 }

@@ -5,10 +5,20 @@ import { provideClientHydration } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { httpInterceptor } from './interceptors/http.interceptor';
+import { loadingInterceptor } from './interceptors/loading.interceptor';
+import { errorInterceptor } from './interceptors/error.interceptor';
 
 
 export const appConfig: ApplicationConfig = {
-  providers: [ provideAnimations(), provideRouter(routes), provideClientHydration(), provideHttpClient(withFetch()), provideHttpClient(withInterceptors([httpInterceptor]))]
+  providers: [
+    provideAnimations(),
+    provideRouter(routes),
+    provideClientHydration(),
+    provideHttpClient(
+      withFetch(),
+      withInterceptors([loadingInterceptor, httpInterceptor, errorInterceptor])
+    )
+  ]
 };
 
 
