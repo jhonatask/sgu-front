@@ -79,8 +79,7 @@ export class LoginComponent {
         this.navigate();
       },
       error: (error) => {
-        // Error is already handled by the error interceptor
-        console.error('Login error:', error);
+        this.errorService.handleError(error);
       }
     });
   }

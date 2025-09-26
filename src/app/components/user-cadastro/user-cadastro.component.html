@@ -8,48 +8,91 @@
         [resizable]="false"
         (onHide)="onCloseModal()"
 >
-    <form [formGroup]="userForm">
+    <form [formGroup]="userForm" class="p-fluid">
         <div class="field">
-            <label for="email">Email</label>
-            <input type="text" pInputText formControlName="email" class="w-full"  name="email" placeholder="exemplo@email.com"/>
-            <small *ngIf="email.invalid && (email.dirty || email.touched)" class="block p-error">
-                <div *ngIf="email.errors?.['required']">Email Obrigatorio</div>
-                <div *ngIf="email.errors?.['email']">Informe um email valido</div>
+            <label for="email" class="block text-900 font-medium mb-2">Email *</label>
+            <input 
+                type="email" 
+                pInputText 
+                formControlName="email" 
+                class="w-full" 
+                name="email" 
+                placeholder="exemplo@email.com"
+                [class.ng-invalid]="email.invalid && (email.dirty || email.touched)"
+            />
+            <small *ngIf="email.invalid && (email.dirty || email.touched)" class="block p-error mt-1">
+                <div *ngIf="email.errors?.['required']">Email é obrigatório</div>
+                <div *ngIf="email.errors?.['email']">Informe um email válido</div>
             </small>
         </div>
+        
         <div class="field">
-            <label for="name">Nome</label>
-            <input type="text" pInputText formControlName="name" class="w-full"  name="name"/>
-            <small *ngIf="name.invalid  && (name.dirty || name.touched)" class="block p-error">
-                <div *ngIf="name.errors?.['required']">Informe o nome</div>
-                  
+            <label for="name" class="block text-900 font-medium mb-2">Nome *</label>
+            <input 
+                type="text" 
+                pInputText 
+                formControlName="name" 
+                class="w-full" 
+                name="name"
+                placeholder="Nome completo"
+                [class.ng-invalid]="name.invalid && (name.dirty || name.touched)"
+            />
+            <small *ngIf="name.invalid && (name.dirty || name.touched)" class="block p-error mt-1">
+                <div *ngIf="name.errors?.['required']">Nome é obrigatório</div>
+                <div *ngIf="name.errors?.['minlength']">Nome deve ter pelo menos 2 caracteres</div>
             </small>
         </div>
+        
         <div class="field">
-            <label for="telefone">Telefone</label>
-            <input type="text" pInputText formControlName="telefone" class="w-full"  name="telefone"/>
-            <small *ngIf="telefone.invalid  && (telefone.dirty || telefone.touched)" class="block p-error">
-                <div *ngIf="telefone.errors?.['required']">Informe o Telefone</div>
-                  
+            <label for="telefone" class="block text-900 font-medium mb-2">Telefone *</label>
+            <input 
+                type="tel" 
+                pInputText 
+                formControlName="telefone" 
+                class="w-full" 
+                name="telefone"
+                placeholder="(11) 99999-9999"
+                (input)="onPhoneInput($event)"
+                [class.ng-invalid]="telefone.invalid && (telefone.dirty || telefone.touched)"
+            />
+            <small *ngIf="telefone.invalid && (telefone.dirty || telefone.touched)" class="block p-error mt-1">
+                <div *ngIf="telefone.errors?.['required']">Telefone é obrigatório</div>
+                <div *ngIf="telefone.errors?.['pattern']">Formato: (11) 99999-9999</div>
             </small>
         </div>
+        
         <div class="field">
-            <label for="cpforcnpj">CPF ou CNPJ</label>
-            <input type="text" pInputText formControlName="cpforcnpj" class="w-full"  name="cpforcnpj"/>
-            <small *ngIf="cpforcnpj.invalid  && (cpforcnpj.dirty || cpforcnpj.touched)" class="block p-error">
-                <div *ngIf="cpforcnpj.errors?.['required']">Informe o CPF ou CNPJ</div>
-                  
+            <label for="cpforcnpj" class="block text-900 font-medium mb-2">CPF ou CNPJ *</label>
+            <input 
+                type="text" 
+                pInputText 
+                formControlName="cpforcnpj" 
+                class="w-full" 
+                name="cpforcnpj"
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                (input)="onDocumentInput($event)"
+                [class.ng-invalid]="cpforcnpj.invalid && (cpforcnpj.dirty || cpforcnpj.touched)"
+            />
+            <small *ngIf="cpforcnpj.invalid && (cpforcnpj.dirty || cpforcnpj.touched)" class="block p-error mt-1">
+                <div *ngIf="cpforcnpj.errors?.['required']">CPF ou CNPJ é obrigatório</div>
+                <div *ngIf="cpforcnpj.errors?.['minlength']">CPF/CNPJ deve ter pelo menos 11 dígitos</div>
             </small>
         </div>
+        
         <div class="field">
-            <label for="departamento">Departamento</label>
-            <br>
-            <p-dropdown [options]="departamentos" formControlName="department" placeholder="Selecione um departamento"/>
-            <small *ngIf="department.invalid  && (department.dirty || department.touched)" class="block p-error">
-            Departamento é obrigatório.
+            <label for="department" class="block text-900 font-medium mb-2">Departamento *</label>
+            <p-dropdown 
+                [options]="departments" 
+                formControlName="department" 
+                placeholder="Selecione um departamento"
+                class="w-full"
+                [class.ng-invalid]="department.invalid && (department.dirty || department.touched)"
+            />
+            <small *ngIf="department.invalid && (department.dirty || department.touched)" class="block p-error mt-1">
+                Departamento é obrigatório
             </small>
         </div>
-      </form>
+    </form>
       <ng-template pTemplate="footer">
                 <p-button 
                     label="Cancel" 
@@ -59,7 +102,7 @@
                     label="Salvar" 
                     severity="success"
                     [disabled]="userForm.invalid"
-                    (click)="selectedUser ? onUpdateUser() : onSaveUserModal()" 
+                    (click)="onSaveUser()" 
                   />
     </ng-template>
 </p-dialog>

@@ -14,9 +14,7 @@ export class UserService {
   constructor(private http: HttpClient) { }
 
   getAllUsers(page: number, size: number, sort: string): Observable<PaginatedUsersResponse> {
-    const cacheKey = `users_${page}_${size}_${sort}`;
-    
-    let params = new HttpParams()
+    const params = new HttpParams()
       .set('page', page.toString())
       .set('size', size.toString())
       .set('sort', sort);
@@ -67,5 +65,24 @@ export class UserService {
   // Method to set cached users
   setCachedUsers(cacheKey: string, users: User[]): void {
     this.usersCache.set(cacheKey, users);
+  }
+
+  // Import methods
+  importUsersUpload(formData: FormData): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/api/users/importar-upload`, formData).pipe(
+      tap(() => {
+        // Clear cache when users are imported
+        this.clearCache();
+      })
+    );
+  }
+
+  importUsersDirectory(): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/api/users/importar`, {}).pipe(
+      tap(() => {
+        // Clear cache when users are imported
+        this.clearCache();
+      })
+    );
   }
 }

@@ -10,6 +10,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      // Skip error handling for login requests to avoid duplicate messages
+      if (req.url.includes('/auth/login')) {
+        return throwError(() => error);
+      }
+
       // Handle 401 errors globally
       if (error.status === 401) {
         authService.logout();

@@ -26,10 +26,6 @@ export class AuthService {
       tap((response) => {
         this.setTokens(response.token, response.refreshToken);
         this.setUsername(response.name);
-      }),
-      catchError((error) => {
-        this.errorService.handleError(error);
-        return throwError(() => error);
       })
     );
   }

@@ -19,7 +19,7 @@ export interface CreateUserRequest {
   password: string;
   telefone: string;
   cpforcnpj: string;
-  departmentId: string;
+  department: string;
 }
 
 export interface UpdateUserRequest {
@@ -28,7 +28,7 @@ export interface UpdateUserRequest {
   email?: string;
   telefone?: string;
   cpforcnpj?: string;
-  departmentId?: string;
+  department?: string;
 }
 
 export interface UserFormData {

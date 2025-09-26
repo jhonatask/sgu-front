@@ -1,38 +1,318 @@
-<p-table [value]="users" [lazy]="true" (onLazyLoad)="getAllUsers($event)" [paginator]="true" [rows]="pageSize" [totalRecords]="totalElements" [loading]="loading">
-    <ng-template pTemplate="caption">
-        <div class="flex align-items-center justify-content-between">
-            <p-button label="Cadastrar Usuário" (onClick)="showAddModal()" icon="pi pi-external-link"/>
-            <p-button label="Sair" (onClick)="logout()" icon="pi pi-sign-out" severity="contrast"></p-button>
+<div class="dashboard-container">
+  <!-- Sidebar Menu -->
+  <div class="sidebar" [class.sidebar-collapsed]="sidebarCollapsed">
+    <div class="sidebar-header">
+      <div class="logo">
+        <i class="pi pi-users"></i>
+        <span *ngIf="!sidebarCollapsed">SGU System</span>
+      </div>
+      <button 
+        class="sidebar-toggle" 
+        (click)="toggleSidebar()"
+        [class.collapsed]="sidebarCollapsed"
+      >
+        <i class="pi" [class.pi-angle-left]="!sidebarCollapsed" [class.pi-angle-right]="sidebarCollapsed"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <ul class="nav-list">
+        <li class="nav-item active">
+          <a class="nav-link" (click)="setActiveSection('users')">
+            <i class="pi pi-users"></i>
+            <span *ngIf="!sidebarCollapsed">Usuários</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" (click)="setActiveSection('departments')">
+            <i class="pi pi-building"></i>
+            <span *ngIf="!sidebarCollapsed">Departamentos</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" (click)="setActiveSection('import')">
+            <i class="pi pi-upload"></i>
+            <span *ngIf="!sidebarCollapsed">Importar CSV</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-info" *ngIf="!sidebarCollapsed">
+        <div class="user-avatar">
+          <i class="pi pi-user"></i>
         </div>
-    </ng-template>
-    <ng-template pTemplate="header">
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Telefone</th>
-        <th>CPF</th>
-        <th>Department</th>
-        <th></th>
-        <th></th>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="body" let-user>
-      <tr>
-        <td>{{ user.name }}</td>
-        <td>{{ user.email }}</td>
-        <td>{{ user.telefone }}</td>
-        <td>{{ user.cpforcnpj }}</td>
-        <td>{{ user.department.name }}</td>
-        <td><p-button icon="pi pi-pencil" [rounded]="true" [text]="true" (click)="showEditModel(user)" /></td>
-        <td><p-button icon="pi pi-times-circle" [rounded]="true" [text]="true" severity="danger" (click)="confirmDelete(user.id)"/></td>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="emptymessage">
-      <tr>
-        <td colspan="3">No users found.</td>
-      </tr>
-    </ng-template>
-  </p-table>
-  <app-user-cadastro [selectedUser]="selectedUser" [displayAddEditModal]="displayAddEditModal" (clickClose)="hideAddModal($event)" (clickAdd)="saveUserToList($event)"></app-user-cadastro>
-  <p-toast position="bottom-right" />
-  <p-confirmDialog></p-confirmDialog>
+        <div class="user-details">
+          <span class="user-name">{{ getUsername() }}</span>
+          <span class="user-role">Administrador</span>
+        </div>
+      </div>
+      <button class="logout-btn" (click)="logout()" [title]="sidebarCollapsed ? 'Sair' : ''">
+        <i class="pi pi-sign-out"></i>
+        <span *ngIf="!sidebarCollapsed">Sair</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Header -->
+    <header class="content-header">
+      <div class="header-left">
+        <h1>{{ getPageTitle() }}</h1>
+        <p>{{ getPageDescription() }}</p>
+      </div>
+      <div class="header-actions">
+        <button 
+          *ngIf="activeSection === 'users'" 
+          class="btn-primary" 
+          (click)="showAddModal()"
+        >
+          <i class="pi pi-plus"></i>
+          Cadastrar Usuário
+        </button>
+        <button 
+          *ngIf="activeSection === 'departments'" 
+          class="btn-primary" 
+          (click)="showDepartmentModal()"
+        >
+          <i class="pi pi-plus"></i>
+          Novo Departamento
+        </button>
+        <button 
+          *ngIf="activeSection === 'import'" 
+          class="btn-primary" 
+          (click)="showImportModal()"
+        >
+          <i class="pi pi-upload"></i>
+          Importar CSV
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <div class="content-body">
+      <!-- Users Section -->
+      <div *ngIf="activeSection === 'users'" class="section-content">
+        <div class="stats-cards">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="pi pi-users"></i>
+            </div>
+            <div class="stat-content">
+              <h3>{{ totalElements }}</h3>
+              <p>Total de Usuários</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="pi pi-building"></i>
+            </div>
+            <div class="stat-content">
+              <h3>{{ departmentsCount }}</h3>
+              <p>Departamentos</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="pi pi-check-circle"></i>
+            </div>
+            <div class="stat-content">
+              <h3>{{ activeUsers }}</h3>
+              <p>Usuários Ativos</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <p-table 
+            [value]="users" 
+            [lazy]="true" 
+            (onLazyLoad)="loadUsers($event)" 
+            [paginator]="true" 
+            [rows]="pageSize" 
+            [totalRecords]="totalElements" 
+            [loading]="loading"
+            [rowsPerPageOptions]="[10, 25, 50]"
+            [paginatorDropdownAppendTo]="'body'"
+            styleClass="p-datatable-striped"
+          >
+            <ng-template pTemplate="header">
+              <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Telefone</th>
+                <th>CPF/CNPJ</th>
+                <th>Departamento</th>
+                <th style="width: 120px">Ações</th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-user>
+              <tr>
+                <td>
+                  <div class="user-cell">
+                    <div class="user-avatar-small">
+                      <i class="pi pi-user"></i>
+                    </div>
+                    <span>{{ user.name }}</span>
+                  </div>
+                </td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.telefone }}</td>
+                <td>{{ user.cpforcnpj }}</td>
+                <td>
+                  <span class="department-badge">{{ user.department.name }}</span>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button 
+                      class="btn-icon btn-edit" 
+                      (click)="showEditModal(user)"
+                      title="Editar"
+                    >
+                      <i class="pi pi-pencil"></i>
+                    </button>
+                    <button 
+                      class="btn-icon btn-delete" 
+                      (click)="confirmDelete(user)"
+                      title="Excluir"
+                    >
+                      <i class="pi pi-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="6" class="text-center">
+                  <div class="empty-state">
+                    <i class="pi pi-users empty-icon"></i>
+                    <h3>Nenhum usuário encontrado</h3>
+                    <p>Comece cadastrando seu primeiro usuário</p>
+                    <button class="btn-primary" (click)="showAddModal()">
+                      <i class="pi pi-plus"></i>
+                      Cadastrar Usuário
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </div>
+      </div>
+
+      <!-- Departments Section -->
+      <div *ngIf="activeSection === 'departments'" class="section-content">
+        <div class="departments-grid">
+          <div class="department-card" *ngFor="let dept of departments">
+            <div class="department-header">
+              <i class="pi pi-building"></i>
+              <h3>{{ dept.name }}</h3>
+            </div>
+            <div class="department-stats">
+              <span>{{ dept.userCount || 0 }} usuários</span>
+            </div>
+            <div class="department-actions">
+              <button class="btn-icon btn-edit" (click)="editDepartment(dept)">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="btn-icon btn-delete" (click)="deleteDepartment(dept)">
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import Section -->
+      <div *ngIf="activeSection === 'import'" class="section-content">
+        <div class="import-container">
+          <div class="import-options">
+            <!-- Option 1: Upload File -->
+            <div class="import-card">
+              <div class="import-header">
+                <i class="pi pi-upload"></i>
+                <h3>Importar via Upload</h3>
+                <p>Faça upload de um arquivo CSV com os dados dos usuários</p>
+              </div>
+              <div class="import-content">
+                <div class="file-upload">
+                  <input 
+                    type="file" 
+                    accept=".csv" 
+                    (change)="onFileSelected($event)"
+                    #fileInput
+                    style="display: none;"
+                  />
+                  <button class="btn-secondary" (click)="fileInput.click()">
+                    <i class="pi pi-upload"></i>
+                    Selecionar Arquivo
+                  </button>
+                  <span *ngIf="selectedFile" class="file-name">{{ selectedFile.name }}</span>
+                </div>
+                <div class="import-actions">
+                  <button 
+                    class="btn-primary" 
+                    [disabled]="!selectedFile || importing"
+                    (click)="importCSVUpload()"
+                  >
+                    <i class="pi pi-check" *ngIf="!importing"></i>
+                    <i class="pi pi-spin pi-spinner" *ngIf="importing"></i>
+                    {{ importing ? 'Importando...' : 'Importar via Upload' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Option 2: Directory Import -->
+            <div class="import-card">
+              <div class="import-header">
+                <i class="pi pi-folder"></i>
+                <h3>Importar do Diretório</h3>
+                <p>Importe usuários de um arquivo CSV pré-cadastrado no servidor</p>
+              </div>
+              <div class="import-content">
+                <div class="directory-info">
+                  <div class="info-item">
+                    <i class="pi pi-info-circle"></i>
+                    <span>O arquivo deve estar no diretório configurado do servidor</span>
+                  </div>
+                  <div class="info-item">
+                    <i class="pi pi-file"></i>
+                    <span>Formato esperado: CSV com cabeçalhos</span>
+                  </div>
+                </div>
+                <div class="import-actions">
+                  <button 
+                    class="btn-primary" 
+                    [disabled]="importing"
+                    (click)="importCSVDirectory()"
+                  >
+                    <i class="pi pi-check" *ngIf="!importing"></i>
+                    <i class="pi pi-spin pi-spinner" *ngIf="importing"></i>
+                    {{ importing ? 'Importando...' : 'Importar do Diretório' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<app-user-cadastro 
+  [selectedUser]="selectedUser" 
+  [displayAddEditModal]="displayAddEditModal" 
+  (clickClose)="hideAddModal($event)" 
+  (clickAdd)="onUserSaved($event)"
+></app-user-cadastro>
+
+<p-toast position="top-right" />
+<p-confirmDialog></p-confirmDialog>

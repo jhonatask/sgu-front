@@ -12,6 +12,7 @@ import { User, CreateUserRequest, UpdateUserRequest, UserFormData } from '../../
 import { Department } from '../../types/departament.type';
 import { LoadingService } from '../../services/loading/loading.service';
 import { ErrorService } from '../../services/error/error.service';
+import { MaskService } from '../../services/mask/mask.service';
 
 interface UserForm {
   id: FormControl<string | null>;
@@ -31,19 +32,21 @@ interface UserForm {
     MessageService,
     DepartmentService,
     LoadingService,
-    ErrorService
+    ErrorService,
+    MaskService
   ],
   templateUrl: './user-cadastro.component.html',
   styleUrl: './user-cadastro.component.scss'
 })
 export class UserCadastroComponent implements OnInit, OnChanges {
+
   @Input() displayAddEditModal: boolean = true;
   @Input() selectedUser: User | null = null;
   @Output() clickClose: EventEmitter<boolean> = new EventEmitter<boolean>();
   @Output() clickAdd: EventEmitter<User> = new EventEmitter<User>();
 
   userForm!: FormGroup<UserForm>;
-  departments: Department[] = [];
+  departments: { label: string; value: string }[] = [];
   isLoading$ = this.loadingService.isLoading$;
 
   constructor(
@@ -51,7 +54,8 @@ export class UserCadastroComponent implements OnInit, OnChanges {
     private messageService: MessageService,
     private departmentService: DepartmentService,
     private loadingService: LoadingService,
-    private errorService: ErrorService
+    private errorService: ErrorService,
+    private maskService: MaskService
   ) {
     this.initializeForm();
   }
@@ -62,12 +66,16 @@ export class UserCadastroComponent implements OnInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedUser'] && this.selectedUser) {
+      // Aplicar máscaras nos dados existentes
+      const maskedTelefone = this.maskService.applyPhoneMask(this.selectedUser.telefone);
+      const maskedDocument = this.maskService.applyDocumentMask(this.selectedUser.cpforcnpj);
+      
       this.userForm.patchValue({
         id: this.selectedUser.id || null,
         name: this.selectedUser.name,
         email: this.selectedUser.email,
-        telefone: this.selectedUser.telefone,
-        cpforcnpj: this.selectedUser.cpforcnpj,
+        telefone: maskedTelefone,
+        cpforcnpj: maskedDocument,
         department: this.selectedUser.department?.id || null
       });
     } else if (changes['selectedUser'] && !this.selectedUser) {
@@ -76,12 +84,12 @@ export class UserCadastroComponent implements OnInit, OnChanges {
   }
 
   private initializeForm(): void {
-    this.userForm = new FormGroup({
-      id: new FormControl(null),
-      name: new FormControl('', [Validators.required, Validators.minLength(2)]),
-      email: new FormControl('', [Validators.required, Validators.email]),
-      telefone: new FormControl('', [Validators.required, Validators.pattern(/^\(\d{2}\)\s\d{4,5}-\d{4}$/)]),
-      cpforcnpj: new FormControl('', [Validators.required, Validators.minLength(11)]),
+    this.userForm = new FormGroup<UserForm>({
+      id: new FormControl(null as any),
+      name: new FormControl<string | null>(null, { nonNullable: true, validators: [Validators.required, Validators.minLength(2)] }),
+      email: new FormControl<string | null>(null, { nonNullable: true, validators: [Validators.required, Validators.email] }),
+      telefone: new FormControl<string | null>(null, { nonNullable: true, validators: [Validators.required, Validators.pattern(/^\(\d{2}\)\s\d{4,5}-\d{4}$/)] }),
+      cpforcnpj: new FormControl('', [Validators.required, Validators.minLength(14)]), // Mínimo 14 para CPF com máscara
       department: new FormControl(null, [Validators.required])
     });
   }
@@ -106,18 +114,32 @@ export class UserCadastroComponent implements OnInit, OnChanges {
     return this.userForm.controls['department'];
   }
 
-  get isFormValid(): boolean {
-    return this.userForm.valid;
-  }
 
   get isEditMode(): boolean {
     return !!this.selectedUser?.id;
   }
 
+  // Métodos para aplicar máscaras
+  onPhoneInput(event: any): void {
+    const value = event.target.value;
+    const maskedValue = this.maskService.applyPhoneMask(value);
+    this.telefone.setValue(maskedValue);
+  }
+
+  onDocumentInput(event: any): void {
+    const value = event.target.value;
+    const maskedValue = this.maskService.applyDocumentMask(value);
+    this.cpforcnpj.setValue(maskedValue);
+  }
+
   loadDepartments(): void {
     this.departmentService.getDepartments().subscribe({
       next: (response: Department[]) => {
-        this.departments = response;
+        // Transformar para o formato esperado pelo PrimeNG Dropdown
+        this.departments = response.map(dept => ({
+          label: dept.name,
+          value: dept.id
+        }));
         if (this.selectedUser?.department?.id) {
           this.userForm.patchValue({
             department: this.selectedUser.department.id
@@ -141,7 +163,7 @@ export class UserCadastroComponent implements OnInit, OnChanges {
   }
 
   onSaveUser(): void {
-    if (!this.isFormValid) {
+    if (this.userForm.invalid) {
       this.userForm.markAllAsTouched();
       this.errorService.handleError('Por favor, preencha todos os campos obrigatórios');
       return;
@@ -160,9 +182,10 @@ export class UserCadastroComponent implements OnInit, OnChanges {
     const createRequest: CreateUserRequest = {
       name: formData.name,
       email: formData.email,
-      telefone: formData.telefone,
-      cpforcnpj: formData.cpforcnpj,
-      departmentId: formData.department
+      telefone: this.maskService.removeMask(formData.telefone), // Remove máscara
+      cpforcnpj: this.maskService.removeMask(formData.cpforcnpj), // Remove máscara
+      department: formData.department,
+      password: ''
     };
 
     this.userService.createUser(createRequest).subscribe({
@@ -187,9 +210,9 @@ export class UserCadastroComponent implements OnInit, OnChanges {
       id: formData.id,
       name: formData.name,
       email: formData.email,
-      telefone: formData.telefone,
-      cpforcnpj: formData.cpforcnpj,
-      departmentId: formData.department
+      telefone: this.maskService.removeMask(formData.telefone), // Remove máscara
+      cpforcnpj: this.maskService.removeMask(formData.cpforcnpj), // Remove máscara
+      department: formData.department
     };
 
     this.userService.updateUser(updateRequest).subscribe({

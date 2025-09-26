@@ -7,6 +7,8 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import { httpInterceptor } from './interceptors/http.interceptor';
 import { loadingInterceptor } from './interceptors/loading.interceptor';
 import { errorInterceptor } from './interceptors/error.interceptor';
+import { MessageService } from 'primeng/api';
+import { ConfirmationService } from 'primeng/api';
 
 
 export const appConfig: ApplicationConfig = {
@@ -17,7 +19,9 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(
       withFetch(),
       withInterceptors([loadingInterceptor, httpInterceptor, errorInterceptor])
-    )
+    ),
+    MessageService,
+    ConfirmationService
   ]
 };
 

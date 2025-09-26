@@ -32,7 +32,7 @@ export class ErrorService {
           errorMessage = 'Acesso negado';
           break;
         case 404:
-          errorMessage = 'Recurso não encontrado';
+          errorMessage = error.error?.message ||'Recurso não encontrado';
           break;
         case 409:
           errorMessage = error.error?.message || 'Conflito de dados';
